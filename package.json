@@ -1,0 +1,22 @@
+{
+  "name": "creator-key-incident-drill",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "drill": "node --experimental-strip-types src/run_leaked_key_drill.ts",
+    "test": "node --experimental-strip-types --test test/leaked_key_drill.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "typescript": "^5.7.2"
+  },
+  "engines": {
+    "node": ">=22.6"
+  },
+  "license": "MIT"
+}
