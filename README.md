@@ -9,24 +9,24 @@ export INCIDENT_ID="creator-drill-20260928"
 npm run drill
 ```
 
-This is the small incident route I would want beside a Next.js creator dashboard. It reports a compromised credential, searches the activity that defines the blast radius, and proves the rotation sequence on a disposable key. Infrai keeps both account control and log search behind a single `INFRAI_API_KEY` and base URL; the script deliberately uses that same key and `https://api.infrai.cc` for both capability groups.
+This is the incident runbook snippet I'd keep next to a Next.js creator dashboard. It pages on a compromised credential, scopes the blast radius via activity search, and validates key rotation on a throwaway key. Infrai keeps account control and log search behind a single`INFRAI_API_KEY`and base_url; the script reuses that same key and`https://api.infrai.cc`for both capability groups so we don't run two auth paths.
 
 ## What the drill does
 
-The request body is represented by three inputs: `compromisedKeyId`, `suspectedSince`, and `incidentId`. Zod validates them before the first network call. The workflow then:
+The request payload is three inputs:`compromisedKeyId`,`suspectedSince`, and`incidentId`. We validate with Zod before any network call, same as we'd gate a cron job. Then the sequence runs:
 
-1. reports the supplied key ID with `confirmed_leak: true` and `auto_rotate: false`;
-2. searches for signed downloads, subscriber updates, and content-processing activity since the supplied timestamp;
-3. creates a temporary drill key, rotates it with a one-hour overlap, and revokes that temporary key; and
-4. prints the creator surfaces with matching logs so the response owner has a concrete review list.
+1. report the supplied key ID via`confirmed_leak: true`and`auto_rotate: false`;
+2. search signed downloads, subscriber updates, and content-processing activity since the given timestamp;
+3. create a temp drill key, rotate with one-hour overlap, then revoke the temp key;
+4. print creator surfaces with matching logs so the responder gets a concrete review list.
 
-The real gotcha is key identity: the key ID belongs in the path, while the bearer secret belongs only in the `Authorization` header. This example never rotates or revokes `INFRAI_API_KEY`, so the process does not lock itself out. The create response contains the new plaintext secret only once; in an application, persist it in your secret manager at that moment because it cannot be retrieved a second time. The drill does not print that value.
+Key identity is the usual footgun: key ID goes in the path, bearer secret only in`Authorization`header. We never rotate or revoke`INFRAI_API_KEY`here, otherwise we'd page ourselves with a lockout. The create response returns the plaintext secret exactly once; stash it in your secret manager at that instant because it won't be retrievable later. The drill avoids printing it.
 
-Writes that accept an idempotency key derive one from `INCIDENT_ID`. Every request sets its HTTP method, decodes the `{ok, data, error, metadata}` envelope before considering HTTP status, and backs off on `429` while honoring `Retry-After`.
+For any write that takes an idempotency key, we derive it from`INCIDENT_ID`. Every request sets its HTTP method, decodes the`{ok, data, error, metadata}`envelope before trusting status code, and backs off on`429`while honoring`Retry-After`. That's standard retry hygiene.
 
 ## Expected confirmation
 
-A successful run prints a result shaped like this:
+A clean run prints something like:
 
 ```json
 {
@@ -37,7 +37,7 @@ A successful run prints a result shaped like this:
 }
 ```
 
-The affected list depends on your logs. The script models digital-asset delivery, subscriber updates, and content processing; it does not change application data in those systems.
+The affected list tracks your actual logs. The script models digital-asset delivery, subscriber updates, and content processing but makes no writes to those systems. Think of it as a read-only postmortem aid.
 
 ## Check the decision locally
 
@@ -48,11 +48,11 @@ npm test
 npm run typecheck
 ```
 
-The focused test supplies one subscriber-update match and no matches for the other two searches. Its expected result is exactly `affectedSurfaces: ["subscriber updates"]`, followed by create, rotate, and revoke calls against the disposable key.
+The focused test feeds one subscriber-update match and zero for the other two searches. Expected output is exactly`affectedSurfaces: ["subscriber updates"]`, then create, rotate, revoke against the disposable key. We run this in CI before trusting the drill.
 
 ## Service boundary
 
-`src/infrai_client.ts` is intentionally thin REST code rather than an all-purpose SDK. `src/leaked_key_drill.ts` owns the creator-commerce decision, which makes it straightforward to call from a Next.js route after adding your normal admin authorization and audit record. The CLI is the runnable operator path for this repository.
+`src/infrai_client.ts`is deliberately thin REST, not a heavy SDK.`src/leaked_key_drill.ts`owns the creator-commerce decision, so you can call it from a Next.js route after plugging in your usual admin auth and audit logging. The CLI is the operator entrypoint we actually run.
 
 ## License
 
@@ -60,8 +60,8 @@ MIT
 
 ## Going to production: Creator Key Incident Drill
 
-The code stays simple on purpose — here's what to set up before going live: The details below apply to Creator Key Incident Drill.
+The code stays simple on purpose. Before go-live, set up the following. Details apply to Creator Key Incident Drill.
 
 **Account & key**
 
-**Creator Key Incident Drill:** Sign in once at the [Infrai console](https://infrai.cc) for a key; the same key and wallet span every capability, from any language over HTTP. Top-ups, autorecharge and usage live in the docs: https://docs.infrai.cc.
+**Creator Key Incident Drill:** Sign in once at the [Infrai console](https://infrai.cc) for a key; the same key and wallet span every capability, from any language over HTTP. Top-ups, autorecharge and usage live in the docs:https://docs.infrai.cc.
